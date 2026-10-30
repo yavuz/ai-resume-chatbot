@@ -85,32 +85,46 @@ Testler LLM'i taklit eden sahte bir istemciyle çalışıyor, API anahtarı gere
 ## Kendi sunucuna kur (Ubuntu + Nginx)
 
 ```bash
-# 1) Kullanıcı ve kod
+# 1) Kullanıcı ve dizinler
+#    Kod /opt/chatbot'ta; kullanıcının ev dizini (.ssh, pip cache) ayrı: /var/lib/chatbot
 sudo apt install -y python3-venv git
-sudo useradd --system --no-create-home --home-dir /opt/chatbot --shell /usr/sbin/nologin chatbot
+sudo useradd --system --create-home --home-dir /var/lib/chatbot --shell /usr/sbin/nologin chatbot
 sudo install -d -o chatbot -g chatbot /opt/chatbot
-sudo -u chatbot git clone https://github.com/yavuz/ai-resume-chatbot.git /opt/chatbot
+
+# 2) Deploy key: sunucuya repo için sadece okuma yetkisi (repo private ise gerekli)
+sudo -u chatbot install -d -m 700 /var/lib/chatbot/.ssh
+sudo -u chatbot ssh-keygen -t ed25519 -N "" -C "chatbot@$(hostname)" -f /var/lib/chatbot/.ssh/id_ed25519
+sudo cat /var/lib/chatbot/.ssh/id_ed25519.pub
+#    Çıkan satırı GitHub'da repo > Settings > Deploy keys > Add deploy key ile ekle
+#    ("Allow write access" KAPALI kalsın). Sonra bağlantıyı test et:
+sudo -u chatbot ssh -o StrictHostKeyChecking=accept-new -T git@github.com
+#    Beklenen: "Hi yavuz/ai-resume-chatbot! You've successfully authenticated..."
+
+# 3) Kod ve bağımlılıklar
+#    (Public bir fork için deploy key gerekmez: https://github.com/<kullanici>/ai-resume-chatbot.git)
+sudo -u chatbot git clone git@github.com:yavuz/ai-resume-chatbot.git /opt/chatbot
 sudo -u chatbot python3 -m venv /opt/chatbot/.venv
-sudo -u chatbot /opt/chatbot/.venv/bin/pip install -r /opt/chatbot/requirements.txt
+sudo -H -u chatbot /opt/chatbot/.venv/bin/pip install -r /opt/chatbot/requirements.txt
 sudo -u chatbot mkdir -p /opt/chatbot/data
 
-# 2) Gizli dosyalar (repoda yok)
+# 4) Gizli dosyalar (repoda yok)
 sudo -u chatbot cp /opt/chatbot/.env.example /opt/chatbot/.env   # düzenle
 sudo chmod 600 /opt/chatbot/.env
-# profile.md'yi kendi makinenden kopyala: scp profile.md sunucu:/tmp/ && sudo install -o chatbot -m 600 /tmp/profile.md /opt/chatbot/
+#    profile.md'yi kendi makinenden kopyala:
+#    scp profile.md sunucu:/tmp/ && sudo install -o chatbot -g chatbot -m 600 /tmp/profile.md /opt/chatbot/ && rm /tmp/profile.md
 
-# 3) Servis
+# 5) Servis
 sudo cp /opt/chatbot/deploy/chatbot.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now chatbot
 curl http://127.0.0.1:8000/healthz
 
-# 4) Nginx + HTTPS (önce DNS'te A kaydı)
+# 6) Nginx + HTTPS (önce DNS'te A kaydı)
 sudo cp /opt/chatbot/deploy/nginx/chat.yavuzyildirim.com.conf /etc/nginx/sites-available/chat.yavuzyildirim.com
 sudo ln -s /etc/nginx/sites-available/chat.yavuzyildirim.com /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d chat.yavuzyildirim.com
 
-# 5) Güvenlik duvarı
+# 7) Güvenlik duvarı
 sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 ```
 

@@ -6,8 +6,8 @@ APP_DIR=/opt/chatbot
 APP_USER=chatbot
 
 cd "$APP_DIR"
-sudo -u "$APP_USER" git pull --ff-only
-sudo -u "$APP_USER" .venv/bin/pip install --quiet -r requirements.txt
+sudo -H -u "$APP_USER" git pull --ff-only
+sudo -H -u "$APP_USER" .venv/bin/pip install --quiet -r requirements.txt
 systemctl restart chatbot
 
 for _ in $(seq 1 15); do
