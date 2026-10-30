@@ -1,0 +1,20 @@
+# Gizli / kişisel
+.env
+profile.md
+
+# Çalışma verisi (SQLite loglar, yedekler)
+data/
+*.db
+*.db-*
+*.sqlite3
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editör / OS
+.DS_Store
+.idea/
+.vscode/

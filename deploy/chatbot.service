@@ -1,0 +1,35 @@
+# /etc/systemd/system/chatbot.service
+# Kurulum: sudo cp deploy/chatbot.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now chatbot
+
+[Unit]
+Description=AI Resume Chatbot (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=chatbot
+Group=chatbot
+WorkingDirectory=/opt/chatbot
+# Ayarlar uygulama tarafından /opt/chatbot/.env dosyasından okunur.
+# Tek worker: dakikalık rate limit sayaçları bellekte tutuluyor.
+ExecStart=/opt/chatbot/.venv/bin/uvicorn --factory app.main:create_app \
+    --host 127.0.0.1 --port 8000 --workers 1 \
+    --proxy-headers --forwarded-allow-ips 127.0.0.1 \
+    --no-server-header
+Restart=always
+RestartSec=3
+
+# Sertleştirme: uygulama sadece data/ dizinine yazabilir.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/opt/chatbot/data
+
+[Install]
+WantedBy=multi-user.target
