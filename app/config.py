@@ -17,7 +17,12 @@ class Settings(BaseSettings):
     # Token kullanımını loglamak için; endpoint stream_options desteklemiyorsa kapat.
     llm_stream_usage: bool = True
 
+    # Botun temsil ettiği kişi. Kurallarda, arayüzde ve eval'lerde kullanılır.
+    owner_name: str
     contact_url: str
+    contact_label: str = "LinkedIn"
+    # Sayfa başlığı; boşsa "<OWNER_NAME> · Yapay Zekâ Asistanı".
+    chat_title: str = ""
 
     profile_path: Path = Path("profile.md")
     system_prompt_path: Path = Path("prompts/system.md")

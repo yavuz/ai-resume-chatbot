@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Yavuz'a Sor</title>
-  <meta name="description" content="Yavuz'un deneyimi, projeleri ve becerileri hakkındaki soruları yanıtlayan yapay zekâ asistanı.">
+  <title>{{TITLE}}</title>
+  <meta name="description" content="{{OWNER_NAME}} hakkında deneyim, proje ve beceri sorularını yanıtlayan yapay zekâ asistanı.">
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/app.js" defer></script>
 </head>
@@ -12,20 +12,20 @@
   <main class="app">
     <header class="header">
       <div>
-        <h1>Yavuz'a Sor</h1>
+        <h1>{{TITLE}}</h1>
         <p class="subtitle">Deneyimi, projeleri ve becerileri hakkında soru sorun.</p>
       </div>
-      <a class="contact" id="contact-link" href="#" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      <a class="contact" href="{{CONTACT_URL}}" target="_blank" rel="noopener noreferrer">{{CONTACT_LABEL}}</a>
     </header>
 
     <section class="messages" id="messages" aria-live="polite">
       <div class="msg bot">
-        <p>Merhaba! Ben Yavuz'un yapay zekâ asistanıyım. Yavuz'un deneyimi, projeleri ve teknik becerileri hakkındaki sorularınızı yanıtlayabilirim.</p>
+        <p>Merhaba! Ben {{OWNER_NAME}} için çalışan bir yapay zekâ asistanıyım. Deneyimi, projeleri ve teknik becerileri hakkındaki sorularınızı yanıtlayabilirim.</p>
       </div>
     </section>
 
     <div class="suggestions" id="suggestions">
-      <button type="button">Yavuz kimdir, ne iş yapıyor?</button>
+      <button type="button">{{OWNER_NAME}} kimdir, ne iş yapıyor?</button>
       <button type="button">Hangi teknolojilerle çalışıyor?</button>
       <button type="button">Öne çıkan projeleri neler?</button>
       <button type="button">Nasıl bir rol arıyor?</button>

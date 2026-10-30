@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import html
 import json
 import logging
 import re
@@ -9,13 +10,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.config import Settings
 from app.llm import LLMClient, OpenAICompatibleClient, Usage
-from app.prompt import build_system_prompt
+from app.prompt import build_system_prompt, fill, placeholders
 from app.ratelimit import MinuteLimiter
 from app.store import Store
 
@@ -48,13 +49,20 @@ def _error(status: int, detail: str) -> JSONResponse:
 
 def create_app(settings: Settings | None = None, llm: LLMClient | None = None) -> FastAPI:
     settings = settings or Settings()
-    system_prompt = build_system_prompt(
-        settings.system_prompt_path, settings.profile_path, settings.contact_url
+    system_prompt = build_system_prompt(settings)
+    # Sayfa açılışta bir kez doldurulur; başlık ve link önizlemeleri JS beklemeden doğru gelir.
+    index_html = fill(
+        (STATIC_DIR / "index.html").read_text(encoding="utf-8"),
+        {key: html.escape(value) for key, value in placeholders(settings).items()},
     )
     store = Store(settings.db_path)
     llm = llm or OpenAICompatibleClient(settings)
     minute_limiter = MinuteLimiter(settings.rate_per_ip_per_minute)
-    contact_hint = f"Yavuz'a doğrudan LinkedIn üzerinden ulaşabilirsiniz: {settings.contact_url}"
+    # Sabit metinlerde isim yalın halde kalır ("X ile"); Türkçe ek uyumu isimden bağımsız olsun.
+    contact_hint = (
+        f"{settings.owner_name} ile doğrudan {settings.contact_label} üzerinden "
+        f"iletişime geçebilirsiniz: {settings.contact_url}"
+    )
     fallback_reply = f"Şu an yanıt veremiyorum. {contact_hint}"
 
     @asynccontextmanager
@@ -75,8 +83,8 @@ def create_app(settings: Settings | None = None, llm: LLMClient | None = None) -
         return hashlib.sha256(f"{settings.ip_hash_salt}:{ip}".encode()).hexdigest()[:32]
 
     @app.get("/", include_in_schema=False)
-    def index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+    def index() -> HTMLResponse:
+        return HTMLResponse(index_html)
 
     @app.get("/healthz")
     def healthz() -> dict:
@@ -86,7 +94,7 @@ def create_app(settings: Settings | None = None, llm: LLMClient | None = None) -
 
     @app.get("/api/config")
     def public_config() -> dict:
-        return {"contact_url": settings.contact_url, "max_message_chars": settings.max_message_chars}
+        return {"fallback_reply": fallback_reply, "max_message_chars": settings.max_message_chars}
 
     @app.post("/api/chat")
     async def chat(body: ChatRequest, request: Request):

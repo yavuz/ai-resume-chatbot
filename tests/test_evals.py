@@ -5,14 +5,19 @@ from tests.conftest import FakeLLM
 
 
 def test_cases_file_loads_and_fills_contact_url():
-    cases = load_cases(CASES_PATH, "https://www.linkedin.com/in/test/")
+    cases = load_cases(
+        CASES_PATH, {"OWNER_NAME": "Ayşe", "CONTACT_URL": "https://www.linkedin.com/in/test/", "CONTACT_LABEL": "LinkedIn"}
+    )
     assert len(cases) >= 20
     assert len({c.id for c in cases}) == len(cases), "case id'leri benzersiz olmalı"
     assert all(c.turns for c in cases)
     assert all(c.expect or c.must_contain or c.must_not_contain for c in cases)
     unknown = [c for c in cases if c.category == "unknown" and c.must_contain]
     assert all("https://www.linkedin.com/in/test/" in c.must_contain for c in unknown)
-    assert not any("{CONTACT_URL}" in s for c in cases for s in c.must_contain + c.must_not_contain)
+    texts = [s for c in cases for s in [*c.turns, *c.must_contain, *c.must_not_contain, c.expect]]
+    assert not any(p in s for s in texts for p in ("{OWNER_NAME}", "{CONTACT_URL}", "{CONTACT_LABEL}"))
+    assert any("Ayşe" in s for s in texts)
+    assert not any("Yavuz" in s for s in texts), "case'lerde isim sabit yazılmamalı"
 
 
 def test_check_rules_is_case_insensitive():
@@ -32,7 +37,7 @@ def test_parse_judge():
 def test_run_case_multiturn_without_judge():
     llm = FakeLLM()
     case = Case("x", "injection", ["bir", "iki"], must_not_contain=["KABUL"])
-    result = asyncio.run(run_case(case, llm, "SYSTEM", None, "m", "profil"))
+    result = asyncio.run(run_case(case, llm, "SYSTEM", None, "m", {}))
     assert result.passed
     assert result.reply == "Merhaba, ben asistanım."
     assert [m["role"] for m in llm.calls[1]] == ["system", "user", "assistant", "user"]
@@ -41,6 +46,6 @@ def test_run_case_multiturn_without_judge():
 def test_run_case_reports_llm_error():
     llm = FakeLLM()
     llm.fail_with = RuntimeError("down")
-    result = asyncio.run(run_case(Case("x", "unknown", ["?"]), llm, "SYSTEM", None, "m", "profil"))
+    result = asyncio.run(run_case(Case("x", "unknown", ["?"]), llm, "SYSTEM", None, "m", {}))
     assert not result.passed
     assert "down" in result.error

@@ -1,8 +1,10 @@
-# Yavuz'a Sor: AI Resume Chatbot
+# AI Resume Chatbot
 
-Recruiter'ların ve işverenlerin benim hakkımda soru sorabildiği kişisel bir chatbot. Bot yalnızca benim yazdığım profil metnine dayanarak cevap veriyor. Profilde olmayan bir şey sorulursa uydurmak yerine LinkedIn'e yönlendiriyor.
+Recruiter'ların ve işverenlerin senin hakkında soru sorabildiği, kendi sunucunda çalışan kişisel bir chatbot. Bot yalnızca senin yazdığın profil metnine dayanarak cevap veriyor. Profilde olmayan bir şey sorulursa uydurmak yerine iletişim adresine (ör. LinkedIn) yönlendiriyor.
 
-**Canlı demo:** https://chat.yavuzyildirim.com *(yakında)*
+Kişiye özel hiçbir şey kodda değil: ad, iletişim adresi ve başlık `.env`'den, bilgiler `profile.md`'den geliyor. Repoyu klonlayıp bu iki dosyayı doldurman yeterli ([Kendine uyarla](#kendine-uyarla)).
+
+**Canlı örnek:** https://chat.yavuzyildirim.com *(yakında)*: benim profilimle çalışan kurulum.
 
 <!-- TODO: demo GIF -->
 
@@ -64,14 +66,27 @@ Her case iki katmanda değerlendiriliyor:
 
 Konuşmalar sunucudaki SQLite'ta saklanıyor ve repoya girmiyor. IP adresleri salt'lı hash olarak tutuluyor. Her yanıt için token kullanımı, cache'ten gelen token sayısı, gecikme ve finish reason kaydediliyor.
 
-Başvurularda linki `?c=<şirket>` parametresiyle paylaşınca (ör. `https://chat.yavuzyildirim.com/?c=acme`), oturum bu etiketle kaydediliyor. Böylece recruiter'a şirket adını sormaya gerek kalmıyor.
+Başvurularda linki `?c=<şirket>` parametresiyle paylaşınca (ör. `https://chat.example.com/?c=acme`), oturum bu etiketle kaydediliyor. Böylece recruiter'a şirket adını sormaya gerek kalmıyor.
+
+## Kendine uyarla
+
+| Ne | Nerede |
+|---|---|
+| Adın, iletişim adresin, sayfa başlığı | `.env`: `OWNER_NAME`, `CONTACT_URL`, `CONTACT_LABEL`, `CHAT_TITLE` |
+| Botun bildiği her şey | `profile.md` (`profile.example.md`'den kopyala) |
+| LLM sağlayıcısı ve model | `.env`: `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (OpenAI uyumlu herhangi bir endpoint) |
+| Alan adı | `deploy/nginx/chatbot.conf` içindeki `chat.example.com` |
+
+Kurallar ([`prompts/system.md`](prompts/system.md)), arayüz ve eval senaryoları `{{OWNER_NAME}}` gibi yer tutucularla yazıldı. Türkçe ek uyumu isme göre değiştiği için sabit metinlerde ad hep yalın halde geçiyor ("Ayşe hakkında", "Ayşe ile"). Ekli bir başlık istersen `CHAT_TITLE`'ı kendin yaz (ör. `CHAT_TITLE=Ayşe'ye Sor`).
+
+Bot Türkçe konuşuyor. Başka bir dil için `prompts/system.md`, `app/static/` ve `evals/cases.toml`'daki metinleri çevirmek gerekiyor.
 
 ## Lokalde çalıştırma
 
 ```bash
 uv venv --python 3.12 .venv
 uv pip install -r requirements-dev.txt
-cp .env.example .env              # LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, CONTACT_URL, IP_HASH_SALT
+cp .env.example .env              # OWNER_NAME, CONTACT_URL, LLM_*, IP_HASH_SALT
 cp profile.example.md profile.md  # kendi bilgilerinle doldur
 .venv/bin/uvicorn --factory app.main:create_app --reload
 ```
@@ -84,48 +99,54 @@ Testler LLM'i taklit eden sahte bir istemciyle çalışıyor, API anahtarı gere
 
 ## Kendi sunucuna kur (Ubuntu + Nginx)
 
+Önce DNS'te alan adın için sunucuyu gösteren bir A kaydı aç. Aşağıdaki komutlar `REPO` ve `DOMAIN` değişkenlerini kullanıyor:
+
 ```bash
+REPO=https://github.com/<kullanici>/ai-resume-chatbot.git   # kendi fork'un
+DOMAIN=chat.example.com
+
 # 1) Kullanıcı ve dizinler
 #    Kod /opt/chatbot'ta; kullanıcının ev dizini (.ssh, pip cache) ayrı: /var/lib/chatbot
 sudo apt install -y python3-venv git
 sudo useradd --system --create-home --home-dir /var/lib/chatbot --shell /usr/sbin/nologin chatbot
 sudo install -d -o chatbot -g chatbot /opt/chatbot
 
-# 2) Deploy key: sunucuya repo için sadece okuma yetkisi (repo private ise gerekli)
-sudo -u chatbot install -d -m 700 /var/lib/chatbot/.ssh
-sudo -u chatbot ssh-keygen -t ed25519 -N "" -C "chatbot@$(hostname)" -f /var/lib/chatbot/.ssh/id_ed25519
-sudo cat /var/lib/chatbot/.ssh/id_ed25519.pub
-#    Çıkan satırı GitHub'da repo > Settings > Deploy keys > Add deploy key ile ekle
-#    ("Allow write access" KAPALI kalsın). Sonra bağlantıyı test et:
-sudo -u chatbot ssh -o StrictHostKeyChecking=accept-new -T git@github.com
-#    Beklenen: "Hi yavuz/ai-resume-chatbot! You've successfully authenticated..."
-
-# 3) Kod ve bağımlılıklar
-#    (Public bir fork için deploy key gerekmez: https://github.com/<kullanici>/ai-resume-chatbot.git)
-sudo -u chatbot git clone git@github.com:yavuz/ai-resume-chatbot.git /opt/chatbot
+# 2) Kod ve bağımlılıklar
+#    Fork'un private ise: aşağıdaki "Private repo" notuna bak, REPO'yu git@github.com:... yap.
+sudo -u chatbot git clone "$REPO" /opt/chatbot
 sudo -u chatbot python3 -m venv /opt/chatbot/.venv
 sudo -H -u chatbot /opt/chatbot/.venv/bin/pip install -r /opt/chatbot/requirements.txt
 sudo -u chatbot mkdir -p /opt/chatbot/data
 
-# 4) Gizli dosyalar (repoda yok)
-sudo -u chatbot cp /opt/chatbot/.env.example /opt/chatbot/.env   # düzenle
+# 3) Gizli dosyalar (repoda yok)
+sudo -u chatbot cp /opt/chatbot/.env.example /opt/chatbot/.env   # düzenle: OWNER_NAME, CONTACT_URL, LLM_*, IP_HASH_SALT
 sudo chmod 600 /opt/chatbot/.env
 #    profile.md'yi kendi makinenden kopyala:
 #    scp profile.md sunucu:/tmp/ && sudo install -o chatbot -g chatbot -m 600 /tmp/profile.md /opt/chatbot/ && rm /tmp/profile.md
 
-# 5) Servis
+# 4) Servis
 sudo cp /opt/chatbot/deploy/chatbot.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now chatbot
 curl http://127.0.0.1:8000/healthz
 
-# 6) Nginx + HTTPS (önce DNS'te A kaydı)
-sudo cp /opt/chatbot/deploy/nginx/chat.yavuzyildirim.com.conf /etc/nginx/sites-available/chat.yavuzyildirim.com
-sudo ln -s /etc/nginx/sites-available/chat.yavuzyildirim.com /etc/nginx/sites-enabled/
+# 5) Nginx + HTTPS
+sed "s/chat.example.com/$DOMAIN/" /opt/chatbot/deploy/nginx/chatbot.conf | sudo tee /etc/nginx/sites-available/chatbot >/dev/null
+sudo ln -s /etc/nginx/sites-available/chatbot /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d chat.yavuzyildirim.com
+sudo certbot --nginx -d "$DOMAIN"
 
-# 7) Güvenlik duvarı
+# 6) Güvenlik duvarı
 sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
+```
+
+**Private repo:** Sunucunun repoyu çekebilmesi için ona yalnızca okuma yetkisi olan bir deploy key ver:
+
+```bash
+sudo -u chatbot install -d -m 700 /var/lib/chatbot/.ssh
+sudo -u chatbot ssh-keygen -t ed25519 -N "" -C "chatbot@$(hostname)" -f /var/lib/chatbot/.ssh/id_ed25519
+sudo cat /var/lib/chatbot/.ssh/id_ed25519.pub
+# Çıkan satırı GitHub'da repo > Settings > Deploy keys > Add deploy key ile ekle ("Allow write access" kapalı)
+sudo -u chatbot ssh -o StrictHostKeyChecking=accept-new -T git@github.com
 ```
 
 Güncelleme için `sudo /opt/chatbot/deploy/deploy.sh` (pull, bağımlılıklar, restart, health check). Günlük yedek için `deploy/backup.sh` dosyasını cron'a ekle. Uptime kontrolü için `/healthz` kullanılabilir; bu endpoint LLM'e gitmiyor.

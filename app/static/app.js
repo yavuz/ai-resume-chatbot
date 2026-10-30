@@ -5,20 +5,18 @@ const form = document.getElementById("composer");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 const suggestions = document.getElementById("suggestions");
-const contactLink = document.getElementById("contact-link");
 
 // Sohbet geçmişi sunucuda tutulur; burada yalnızca oturum kimliği var.
 // Sayfa yenilenince yeni sohbet başlar.
 let sessionId = null;
 let busy = false;
-let contactUrl = "";
+let fallbackReply = "";
 const ref = new URLSearchParams(location.search).get("c");
 
 fetch("/api/config")
   .then((r) => r.json())
   .then((cfg) => {
-    contactUrl = cfg.contact_url;
-    contactLink.href = contactUrl;
+    fallbackReply = cfg.fallback_reply;
     input.maxLength = cfg.max_message_chars;
   })
   .catch(() => {});
@@ -74,9 +72,7 @@ function scrollToBottom() {
 }
 
 function fallbackText() {
-  return contactUrl
-    ? `Şu an yanıt veremiyorum. Yavuz'a doğrudan LinkedIn üzerinden ulaşabilirsiniz: ${contactUrl}`
-    : "Şu an yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.";
+  return fallbackReply || "Şu an yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.";
 }
 
 // --- Sunucuya gönderme ve SSE akışını okuma ---

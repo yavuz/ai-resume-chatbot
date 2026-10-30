@@ -34,13 +34,14 @@ class FakeLLM:
 @pytest.fixture
 def make_settings(tmp_path):
     profile = tmp_path / "profile.md"
-    profile.write_text("Yavuz Python ve LLM ile çalışır.", encoding="utf-8")
+    profile.write_text("Ayşe Python ve LLM ile çalışır.", encoding="utf-8")
 
     def _make(**overrides) -> Settings:
         values = dict(
             llm_base_url="http://127.0.0.1:1/v1",
             llm_api_key="test",
             llm_model="fake-model",
+            owner_name="Ayşe",
             contact_url="https://www.linkedin.com/in/test/",
             profile_path=profile,
             system_prompt_path=ROOT / "prompts" / "system.md",

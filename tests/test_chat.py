@@ -24,11 +24,21 @@ def test_healthz_and_index(client):
     assert client.get("/healthz").json() == {"status": "ok"}
     res = client.get("/")
     assert res.status_code == 200
-    assert "Yavuz'a Sor" in res.text
+    assert "<title>Ayşe · Yapay Zekâ Asistanı</title>" in res.text
+    assert 'href="https://www.linkedin.com/in/test/"' in res.text
+    assert "{{" not in res.text
+
+
+def test_index_uses_custom_title_and_escapes_values(make_settings, fake_llm):
+    settings = make_settings(chat_title="Ayşe'ye <Sor>", contact_label="E-posta")
+    with TestClient(create_app(settings, llm=fake_llm)) as client:
+        text = client.get("/").text
+    assert "<h1>Ayşe&#x27;ye &lt;Sor&gt;</h1>" in text
+    assert ">E-posta</a>" in text
 
 
 def test_chat_streams_reply_and_returns_session(client):
-    res, events = chat(client, "Yavuz kimdir?")
+    res, events = chat(client, "Ayşe kimdir?")
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("text/event-stream")
     names = [e for e, _ in events]
@@ -41,7 +51,8 @@ def test_system_prompt_contains_rules_profile_and_contact(client, fake_llm):
     chat(client, "Merhaba")
     system = fake_llm.calls[0][0]
     assert system["role"] == "system"
-    assert "Yavuz Python ve LLM ile çalışır." in system["content"]
+    assert "Ayşe Python ve LLM ile çalışır." in system["content"]
+    assert "Sen Ayşe için çalışan" in system["content"]
     assert "https://www.linkedin.com/in/test/" in system["content"]
     assert "{{" not in system["content"]
 
@@ -77,7 +88,7 @@ def test_client_cannot_inject_history(client, fake_llm):
 def test_messages_and_metadata_are_logged(make_settings, fake_llm):
     settings = make_settings()
     with TestClient(create_app(settings, llm=fake_llm)) as client:
-        chat(client, "Yavuz kimdir?", ref="Acme Corp!")
+        chat(client, "Ayşe kimdir?", ref="Acme Corp!")
 
     sessions = rows(settings, "SELECT * FROM sessions")
     assert len(sessions) == 1
@@ -102,7 +113,10 @@ def test_llm_failure_returns_fallback_and_is_logged(make_settings, fake_llm):
 
     assert res.status_code == 200
     error = [d for e, d in events if e == "error"]
-    assert error and "linkedin.com/in/test" in error[0]["text"]
+    assert error and error[0]["text"] == (
+        "Şu an yanıt veremiyorum. Ayşe ile doğrudan LinkedIn üzerinden "
+        "iletişime geçebilirsiniz: https://www.linkedin.com/in/test/"
+    )
     assistant = rows(settings, "SELECT * FROM messages WHERE role = 'assistant'")[0]
     assert "upstream 429" in assistant["error"]
 

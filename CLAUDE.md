@@ -24,6 +24,7 @@ Kullanıcıyla Türkçe konuş. Yavuz bir AI engineer (Python, ML, LLM API deney
   - Alan adı: `yavuzyildirim.com` (subdomain `chat.yavuzyildirim.com`); sunucuda başka siteler de var, ayrı server block
   - Güncelleme: `git pull` + `systemctl restart chatbot` (`deploy.sh`)
 - **Loglama:** Konuşmalar SQLite'ta, sunucuda tutulur. Repoya girmez, ara ara yedeklenir.
+- **Genel repo:** Kod kişiye özel değil; başkası fork'layıp kendi adıyla kurabilir. Ad/iletişim/başlık `.env`'de (`OWNER_NAME`, `CONTACT_URL`, `CONTACT_LABEL`, `CHAT_TITLE`), bilgiler `profile.md`'de. Prompt, arayüz ve eval'lere isim sabit yazılmaz; `{{OWNER_NAME}}` yer tutucusu kullanılır ve isim sabit metinlerde yalın halde geçer (Türkçe ek uyumu). Nginx şablonu `deploy/nginx/chatbot.conf` (`chat.example.com`).
 - **GitHub:** Public repo, MIT lisans.
 
 ## Zorunlu davranışlar (bot)
