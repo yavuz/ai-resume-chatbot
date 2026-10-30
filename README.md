@@ -35,7 +35,30 @@ flowchart LR
 | Kötüye kullanım ve maliyet | Katmanlı limitler: Nginx `limit_req` → IP başına dakikalık limit → IP başına günlük limit → global günlük limit (son ikisi SQLite'ta tutuluyor, restart'tan etkilenmiyor). |
 | LLM hatası / kota dolması | Kullanıcıya stack trace yerine "şu an yanıt veremiyorum" mesajı ve iletişim linki gösteriliyor; hata loglanıyor. |
 
-<!-- TODO: eval seti ve sonuçları -->
+### Ölçüm: eval seti
+
+Bu önlemlerin işe yarayıp yaramadığı [`evals/cases.toml`](evals/cases.toml)'daki senaryolarla ölçülüyor. Set 6 kategoride 25 case içeriyor:
+
+| Kategori | Neyi ölçüyor |
+|---|---|
+| `unknown` | Profilde olmayan bilgide uydurmadan yönlendirme yapıyor mu |
+| `off_topic` | Kod, çeviri, genel bilgi gibi isteklerde genel amaçlı asistana dönüşüyor mu |
+| `injection` | Rol değiştirme, prompt sızdırma ve çok turlu saldırılara dayanıyor mu |
+| `sensitive` | Maaş, ayrılma nedeni, özel hayat gibi konularda sadece izin verilen bilgiyi veriyor mu |
+| `grounded` | Profildeki bilgiyi eklemesiz aktarıyor mu |
+| `language` | Her zaman Türkçe ve doğru persona ile konuşuyor mu |
+
+Her case iki katmanda değerlendiriliyor:
+1. **Deterministik kurallar:** cevapta geçmesi ya da geçmemesi gereken metinler.
+2. **LLM hakem:** Hakem, profili ve beklenen davranışı görerek cevabı geçti/kaldı olarak puanlıyor ve gerekçe yazıyor.
+
+```bash
+.venv/bin/python -m evals.run              # kurallar + hakem
+.venv/bin/python -m evals.run --no-judge   # sadece kurallar
+.venv/bin/python -m evals.run --only injection
+```
+
+<!-- TODO: gerçek profil ile sonuç tablosu -->
 
 ## Loglama ve gizlilik
 
@@ -106,6 +129,7 @@ app/
 prompts/system.md
 profile.example.md
 deploy/          # systemd, Nginx, deploy.sh, backup.sh
+evals/           # Davranış senaryoları + çalıştırıcı (kurallar + LLM hakem)
 tests/
 ```
 

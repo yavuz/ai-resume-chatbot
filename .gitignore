@@ -8,6 +8,9 @@ data/
 *.db-*
 *.sqlite3
 
+# Eval raporları (cevaplar profil içeriği taşır)
+evals/results/
+
 # Python
 .venv/
 __pycache__/

@@ -22,7 +22,7 @@ class FakeLLM:
         self.fail_with: Exception | None = None
 
     async def stream(self, messages):
-        self.calls.append(messages)
+        self.calls.append(list(messages))
         if self.fail_with:
             raise self.fail_with
         for part in self.reply:
