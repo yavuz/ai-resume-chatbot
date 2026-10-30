@@ -89,7 +89,7 @@ Testler LLM'i taklit eden sahte bir istemciyle çalışıyor, API anahtarı gere
 sudo apt install -y python3-venv git
 sudo useradd --system --no-create-home --home-dir /opt/chatbot --shell /usr/sbin/nologin chatbot
 sudo install -d -o chatbot -g chatbot /opt/chatbot
-sudo -u chatbot git clone https://github.com/<kullanici>/ai-resume-chatbot.git /opt/chatbot
+sudo -u chatbot git clone https://github.com/yavuz/ai-resume-chatbot.git /opt/chatbot
 sudo -u chatbot python3 -m venv /opt/chatbot/.venv
 sudo -u chatbot /opt/chatbot/.venv/bin/pip install -r /opt/chatbot/requirements.txt
 sudo -u chatbot mkdir -p /opt/chatbot/data
