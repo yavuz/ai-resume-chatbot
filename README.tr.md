@@ -101,7 +101,7 @@ Testler LLM'i taklit eden sahte bir istemciyle çalışıyor, API anahtarı gere
 
 ## Kendi sunucuna kur (Ubuntu + Nginx)
 
-Önce DNS'te alan adın için sunucuyu gösteren bir A kaydı aç. Aşağıdaki komutlar `REPO` ve `DOMAIN` değişkenlerini kullanıyor:
+Bu örnek kurulum; başka sistemler için [Diğer platformlar](#diğer-platformlar) bölümüne bak. Önce DNS'te alan adın için sunucuyu gösteren bir A kaydı aç. Aşağıdaki komutlar `REPO` ve `DOMAIN` değişkenlerini kullanıyor:
 
 ```bash
 REPO=https://github.com/<kullanici>/ai-resume-chatbot.git   # kendi fork'un
@@ -153,6 +153,23 @@ sudo -u chatbot ssh -o StrictHostKeyChecking=accept-new -T git@github.com
 
 Güncelleme için `sudo /opt/chatbot/deploy/deploy.sh` (pull, bağımlılıklar, restart, health check). Günlük yedek için `deploy/backup.sh` dosyasını cron'a ekle. Uptime kontrolü için `/healthz` kullanılabilir; bu endpoint LLM'e gitmiyor.
 
+## Diğer platformlar
+
+Uygulama Ubuntu'ya ya da Nginx'e bağlı değil. Gerçekten ihtiyaç duyduğu şeyler:
+
+- **Python 3.12** ve `requirements.txt` (Linux + Python 3.12 için sabitlendi). Veritabanı standart kütüphanedeki SQLite; sistem paketi gerekmiyor.
+- **Kalıcı bir disk** (`data/`): konuşmalar ve günlük limit sayaçları bu SQLite dosyasında.
+- **Tek süreç.** Dakikalık limit bellekte tutuluyor; birden fazla worker ya da kopya her biri ayrı sayar.
+- **Önünde HTTPS sağlayan bir reverse proxy.** `/api/chat` için buffering kapalı olmalı (yoksa cevap akmaz, tek parça gelir) ve gerçek istemci IP'sini iletmeli. `chatbot.service` yönlendirme başlıklarına yalnızca `127.0.0.1`'den güveniyor (`--forwarded-allow-ips`); proxy başka bir adresten bağlanıyorsa bunu değiştir.
+
+| Kurulum | Notlar |
+|---|---|
+| Başka Linux dağıtımları (Debian, Fedora, …) | Aynı adımlar; sadece paket kurulum satırı ve Nginx'in site dizini değişir. systemd servisi aynen çalışır. |
+| Nginx yerine Caddy | 5. adım yerine [`deploy/caddy/Caddyfile`](deploy/caddy/Caddyfile) kullan. Sertifikayı Caddy kendisi alıp yeniliyor, certbot gerekmez. Caddy'de `limit_req`'in yerleşik bir karşılığı yok; uygulamadaki limitler yine geçerli. |
+| PaaS (Render, Railway, Fly.io, …) | `DB_PATH` için kalıcı bir volume ve tek bir kopya ile çalışır. HTTPS'i ve proxy'yi platform sağlar. `--proxy-headers` ile başlat ve `--forwarded-allow-ips`'e platform proxy'sinin adreslerini yaz. `'*'` kullanma: uvicorn o zaman `X-Forwarded-For`'daki en soldaki adresi alır; istemci bunu sahteleyip IP başına limitleri aşabilir. |
+| Docker | Repoda Dockerfile yok. |
+| macOS / Windows | Lokalde çalıştırmak için yeterli ([Lokalde çalıştırma](#lokalde-çalıştırma)); sunucu olarak systemd yerine başka bir süreç yöneticisi gerekir. |
+
 ## Proje yapısı
 
 ```
@@ -165,7 +182,7 @@ app/
   static/        # Chat arayüzü
 prompts/system.md
 profile.example.md
-deploy/          # systemd, Nginx, deploy.sh, backup.sh
+deploy/          # systemd, Nginx, Caddy, deploy.sh, backup.sh
 evals/           # Davranış senaryoları + çalıştırıcı (kurallar + LLM hakem)
 tests/
 ```

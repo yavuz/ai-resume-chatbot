@@ -48,7 +48,7 @@ Kullanıcıyla Türkçe konuş. Yavuz bir AI engineer (Python, ML, LLM API deney
 - Backend + chat arayüzü
 - `profile.example.md`
 - `.env.example`, `.gitignore`
-- `deploy/chatbot.service`, Nginx örnek konfigürasyonu, `deploy.sh`
+- `deploy/chatbot.service`, Nginx örnek konfigürasyonu (`deploy/nginx/chatbot.conf`), Caddy alternatifi (`deploy/caddy/Caddyfile`), `deploy.sh`
 - README: İngilizce `README.md` + Türkçe `README.tr.md` (ikisi birlikte güncellenir); canlı demo linki, GIF, mimari şeması, "halüsinasyonu nasıl önledim / injection'a karşı ne yaptım" bölümü, "kendi sunucuna kur" adımları
 - `LICENSE` (MIT)
 

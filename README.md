@@ -103,7 +103,7 @@ Tests use a fake LLM client; no API key needed:
 
 ## Deploy on your own server (Ubuntu + Nginx)
 
-First, create a DNS A record pointing your domain at the server. The commands below use the `REPO` and `DOMAIN` variables:
+This is the reference setup; for other systems see [Other platforms](#other-platforms). First, create a DNS A record pointing your domain at the server. The commands below use the `REPO` and `DOMAIN` variables:
 
 ```bash
 REPO=https://github.com/<user>/ai-resume-chatbot.git   # your fork
@@ -155,6 +155,23 @@ sudo -u chatbot ssh -o StrictHostKeyChecking=accept-new -T git@github.com
 
 To update, run `sudo /opt/chatbot/deploy/deploy.sh` (pull, dependencies, restart, health check). For daily backups, add `deploy/backup.sh` to cron. Use `/healthz` for uptime monitoring; it doesn't call the LLM.
 
+## Other platforms
+
+The app isn't tied to Ubuntu or Nginx. What it actually needs:
+
+- **Python 3.12** and `requirements.txt` (pinned for Linux + Python 3.12). The database is SQLite from the standard library; no system packages.
+- **A persistent disk** for `data/`: conversations and the daily limit counters live in that SQLite file.
+- **A single process.** The per-minute limit is kept in memory; multiple workers or replicas would each count separately.
+- **A reverse proxy with HTTPS** in front that doesn't buffer `/api/chat` (otherwise replies arrive in one piece instead of streaming) and passes the real client IP. `chatbot.service` trusts forwarded headers only from `127.0.0.1` (`--forwarded-allow-ips`); change it if your proxy connects from elsewhere.
+
+| Setup | Notes |
+|---|---|
+| Other Linux distros (Debian, Fedora, …) | Same steps; only the package install line and Nginx's site directory differ. The systemd unit works as is. |
+| Caddy instead of Nginx | Use [`deploy/caddy/Caddyfile`](deploy/caddy/Caddyfile) instead of step 5. Caddy gets and renews the certificate itself, so certbot isn't needed. Caddy has no built-in equivalent of `limit_req`; the app's own limits still apply. |
+| PaaS (Render, Railway, Fly.io, …) | Works with a persistent volume mounted for `DB_PATH` and exactly one instance. The platform provides HTTPS and the proxy. Start with `--proxy-headers` and set `--forwarded-allow-ips` to the platform proxy's addresses. Avoid `'*'`: uvicorn then takes the leftmost `X-Forwarded-For` entry, which the client can forge to bypass per-IP limits. |
+| Docker | No Dockerfile is included. |
+| macOS / Windows | Fine for local runs ([Running locally](#running-locally)); as a server you'd need another process manager instead of systemd. |
+
 ## Project structure
 
 ```
@@ -167,7 +184,7 @@ app/
   static/        # Chat UI
 prompts/system.md
 profile.example.md
-deploy/          # systemd, Nginx, deploy.sh, backup.sh
+deploy/          # systemd, Nginx, Caddy, deploy.sh, backup.sh
 evals/           # Behavior scenarios + runner (rules + LLM judge)
 tests/
 ```

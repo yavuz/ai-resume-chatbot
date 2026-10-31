@@ -1,0 +1,28 @@
+# Nginx yerine Caddy kullanmak için site bloğu. chat.example.com yerine kendi alan adını yaz
+# ve bu bloğu /etc/caddy/Caddyfile'a ekle (paketle gelen varsayılan ":80" bloğunu kaldır).
+#   sudo systemctl reload caddy
+#
+# HTTPS sertifikasını Caddy kendisi alır ve yeniler; certbot gerekmez.
+# Nginx şablonundaki limit_req'in karşılığı Caddy'de yerleşik değil; uygulamadaki
+# IP başına ve global limitler yine geçerli.
+
+chat.example.com {
+	request_body {
+		max_size 16KB
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+		-Server
+	}
+
+	# Caddy istemciden gelen X-Forwarded-For'a güvenmez, gerçek istemci IP'sini yazar;
+	# uygulama (--forwarded-allow-ips 127.0.0.1) bu değeri kullanır.
+	reverse_proxy 127.0.0.1:8000 {
+		# Akan (SSE) cevaplar beklemeden iletilsin.
+		flush_interval -1
+	}
+}
